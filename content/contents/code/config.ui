@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>300</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QLabel" name="7digital">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>0</y>
+     <width>320</width>
+     <height>200</height>
+    </rect>
+   </property>
+   <property name="pixmap">
+    <pixmap>7digital.png</pixmap>
+   </property>
+  </widget>
+    <widget class="QLabel" name="authorise_url">
+     <property name="geometry">
+      <rect>
+       <x>40</x>
+       <y>100</y>
+       <width>320</width>
+       <height>80</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string><![CDATA[<a href="https://account.7digital.com/web/oauth/authorise?oauth_token=AAAAAAA" target="_blank">Connect to your 7digital account.</a>]]></string>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,20 @@
+{
+    "name": "7digital",
+    "pluginName": "7digital",
+    "author": "filip",
+    "email": "filip@7digital.com",
+    "version": "0.0.1",
+    "website": "http://gettomahawk.com",
+    "description": "Resolves to tracks in your 7digital cloud locker",
+    "type": "resolver/javascript",
+    "manifest": {
+        "main": "contents/code/7digital.js",
+        "scripts": [],
+        "icon": "contents/images/icon.png",
+        "resources": [
+            "contents/code/7digital.png",
+            "contents/code/7digital-icon.png",
+            "contents/code/config.ui"
+        ]
+    }
+}
