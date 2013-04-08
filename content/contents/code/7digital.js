@@ -618,8 +618,6 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         lockerReleases = this.xmlToJson(xmlDoc).response.locker.lockerReleases;
         for (var i = 0; i < lockerReleases.lockerRelease.length; i++) {
             var lockerRelease = lockerReleases.lockerRelease[i];
-            Tomahawk.log("7d: Processing locker release #"+i+" : " + lockerRelease.release.artist.appearsAs["#text"] + " - " + lockerRelease.release.title["#text"]);
-            Tomahawk.log("7d: tracks for release: " + lockerRelease.lockerTracks.lockerTrack.length)
             if (lockerRelease.lockerTracks.lockerTrack !== undefined) {
                 if (lockerRelease.lockerTracks.lockerTrack.length > 1) {
                     for (j = 0; j < lockerRelease.lockerTracks.lockerTrack.length; j++) {
@@ -640,7 +638,6 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         var resultItem = new Object();
         resultItem.track = track.title["#text"];
         resultItem.artist = track.artist.appearsAs["#text"];
-//        Tomahawk.log("7d: API result: " + resultItem.artist + " - " + resultItem.track);
         resultItem.source = this.settings.name;
         resultItem.mimetype = "audio/mpeg";
 //      resultItem.bitrate = 128;
@@ -655,9 +652,7 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         }
         var stream_url = this.getTrackStreamLockerUrl(track["@attributes"].id);
         resultItem.url = stream_url;//"http://previews.7digital.com/clips/34/" + track.id + ".clip.mp3"
-        //Tomahawk.log("7d: stream URL: " + that.getTrackStreamUrl(track.id));
         resultItem.linkUrl = track.url["#text"];
-       Tomahawk.log("7d: done with locker track.");
        return resultItem;
     },
 
@@ -668,32 +663,22 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         var qa = stringA.toLowerCase().replace(/[\W]+/ig, " ").trim().split(" ");
         var ra = stringB.toLowerCase().replace(/[\W]+/ig, " ").trim().split(" ");
 
-       // Tomahawk.log("<br />query array: <br />");
         var match_count = 0;
         for (var i=0; i<qa.length; i++) {
-        //    Tomahawk.log("\""+qa[i] + "\"<br />");
             if (ra.indexOf(qa[i])>-1) {
                 match_count++;
             }
         }
         q_score = match_count / qa.length;
-   //     Tomahawk.log(match_count + " of " + qa.length + " = " + q_score);
 
-        //Tomahawk.log("<br />result array: <br />");
         match_count = 0;
         for (var i=0; i<ra.length; i++) {
-        //    Tomahawk.log(ra[i] + ",");
             if (qa.indexOf(ra[i])>-1) {
                 match_count++;
             }
         }
         r_score = match_count / ra.length;
-   //     Tomahawk.log(match_count + " of " + ra.length + " = " + r_score);
         var score = (r_score + q_score) / 2;
-        if (score > 0) {
-            Tomahawk.log("7d: Match score for " + stringB + ": " + q_score + " / " + r_score + " = " + score);
-        }
-
         return score;
     },
 
@@ -707,7 +692,6 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
                 resolveResults.push(item)
             }
         }
-        Tomahawk.log("7d: Resolving " + artist + ", " + album + ",  " + title + "; results: " + resolveResults.length);
         return resolveResults;
     },
 
@@ -731,15 +715,12 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         };
         var apiQuery = this.getLockerUrl();
         if (that.locker.lastUpdated == undefined) {
-            Tomahawk.log("7d: Locker query: " + apiQuery)
             Tomahawk.asyncRequest(apiQuery, function (xhr) {
-                //          Tomahawk.log("7d: API response: " + xhr.responseText);
                 that.loadLocker(xhr.responseText);
                 result.results = that.resolveLockerItems(artist, album, title, that.locker.items);
                 Tomahawk.addTrackResults(result);
             }, {"Accept": "application/xml"});
         } else {
-            Tomahawk.log("7d: Locker last updated: " + that.locker.lastUpdated);
             result.results = that.resolveLockerItems(artist, album, title, that.locker.items);
             Tomahawk.addTrackResults(result);
         }
@@ -753,15 +734,12 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         };
         var apiQuery = this.getLockerUrl();
         if (that.locker.lastUpdated == undefined) {
-            Tomahawk.log("7d: Locker query: " + apiQuery)
             Tomahawk.asyncRequest(apiQuery, function (xhr) {
-    //          Tomahawk.log("7d: API response: " + xhr.responseText);
                 that.loadLocker(xhr.responseText);
                 result.results = that.searchLockerItems(searchString, that.locker.items);
                 Tomahawk.addTrackResults(result);
             }, {"Accept": "application/xml"});
         } else {
-            Tomahawk.log("7d: Locker last updated: " + that.locker.lastUpdated);
             result.results = that.searchLockerItems(searchString, that.locker.items);
             Tomahawk.addTrackResults(result);
         }
