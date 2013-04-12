@@ -494,20 +494,28 @@ if (OAuthSimple === undefined)
     };
 }
 
-//hardcoded test account for now
-var accessToken = "D87xD9X3SB3WttuwLX0Fsg";
-var tokenSecret = "FyYy4iG4utVyoCe3Piz4iQ";
-
 var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
 
 	getConfigUi: function () {
-		var uiData = Tomahawk.readBase64("config.ui");
-		return {
+		var uiData;
+        var account_status = "";
+        if (!this.signedInAtStart) {
+            uiData = Tomahawk.readBase64("config-disconnected.ui");
+            var token = this.getRequestToken();
+            var authorisation_url = "https://account.7digital.com/web/oauth/authorise?oauth_token=" + token.access_token;
+            account_status = "<a href=\""+authorisation_url+"\" target=\"_blank\">Connect to your 7digital account.</a>";
+            this.requestToken = token;
+        } else {
+            uiData = Tomahawk.readBase64("config-connected.ui");
+            account_status = "You're signed in as: " + this.account;
+        }
+        uiData = btoa(atob(uiData).replace("##account_status##",account_status));
+        return {
 			"widget": uiData,
-			fields: [{
-                name: "authoriseUrl",
-                widget: "authorise_url",
-                property: "text"
+            fields: [{
+                name: "signOut",
+                widget: "signOutCheckBox",
+                property: "checked"
             }],
 			images: [{
 				"7digital.png" : Tomahawk.readBase64("7digital.png")
@@ -516,10 +524,56 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
 	},
 
 	newConfigSaved: function () {
-		var userConfig = this.getUserConfig();
-        Tomahawk.log("AuthoriseUrl: " + userConfig.authoriseUrl);
-		this.saveUserConfig();
+        if (!this.signedInAtStart) {
+            this.accessToken = this.getAccessToken(this.requestToken);
+            this.account = this.getUserEmailAddress();
+            if (this.signedIn()) {
+                Tomahawk.log("Connected to 7digital account " + this.account);
+            } else {
+                Tomahawk.log("Failed to connect to 7digital account");
+            }
+        } else {
+            var userConfig = this.getUserConfig();
+            if (userConfig.signOut) {
+                this.accessToken = undefined;
+                this.account = undefined;
+                this.locker = {
+                    lastUpdated: undefined,
+                    items: []
+                };
+            }
+        }
+        this.saveCustomConfig()
 	},
+
+    loadCustomConfig: function() {
+        var configJson = window.localStorage[ this.scriptPath() + "_custom" ];
+        if( configJson === undefined ) {
+            configJson = "{}";
+        }
+        var customConfig = JSON.parse( configJson );
+        if (customConfig.accessToken && customConfig.accessTokenSecret) {
+            this.accessToken = {'access_token':customConfig.accessToken,'access_secret':customConfig.accessTokenSecret};
+            this.account = customConfig.account;
+        }
+
+    },
+
+    saveCustomConfig: function() {
+        var accessToken;
+        var accessTokenSecret;
+        if (this.accessToken) {
+            accessToken = this.accessToken.access_token;
+            accessTokenSecret = this.accessToken.access_secret;
+        }
+        config = {
+            "accessToken": accessToken,
+            "accessTokenSecret": accessTokenSecret,
+            "account": this.account
+        };
+        window.localStorage[ this.scriptPath() + "_custom" ] = JSON.stringify( config );
+    },
+
 
 	settings: {
 		name: '7digital',
@@ -529,13 +583,17 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
 	},
 
 	init: function() {
-        // Set userConfig here
-        var userConfig = this.getUserConfig();
+        this.loadCustomConfig();
         this.locker = {
             lastUpdated: undefined,
             items: []
         };
+        this.signedInAtStart = (this.accessToken != undefined);
 	},
+
+    signedIn: function() {
+        return !(this.accessToken == undefined)
+    },
 
     xmlToJson: function(xml) {
 
@@ -575,16 +633,45 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
         return obj;
     },
 
-    getSignedUrl: function(url, params, requiresUser) {
+    getSignedUrl: function(url, params, token) {
         var _0x2b7c=["\x38\x65\x6C\x39\x7A\x74\x67\x64\x65\x75\x6E\x62\x79\x6C\x62\x39\x72\x64\x3A\x72\x78\x7A\x69\x3A\x34\x67\x66\x65","","\x63\x68\x61\x72\x43\x6F\x64\x65\x41\x74","\x26","\x21","\x66\x72\x6F\x6D\x43\x68\x61\x72\x43\x6F\x64\x65","\x6C\x65\x6E\x67\x74\x68","\x72\x65\x73\x65\x74"];var s=_0x2b7c[0];var m1=_0x2b7c[1];for(i=0;i<12;i++){if(s[_0x2b7c[2]](i)==28){m1+=_0x2b7c[3];} else {if(s[_0x2b7c[2]](i)==23){m1+=_0x2b7c[4];} else {m1+=String[_0x2b7c[5]](s[_0x2b7c[2]](i)-1);} ;} ;} ;var m2=_0x2b7c[1];for(i=12;i<s[_0x2b7c[6]];i++){if(s[_0x2b7c[2]](i)==28){m2+=_0x2b7c[3];} else {if(s[_0x2b7c[2]](i)==23){m2+=_0x2b7c[4];} else {m2+=String[_0x2b7c[5]](s[_0x2b7c[2]](i)-1);} ;} ;} ;OAuthSimple()[_0x2b7c[7]]();var oauth=OAuthSimple(m1,m2);
-        if (requiresUser) {
-            oauth.setTokensAndSecrets({
-                'access_token':accessToken,'access_secret':tokenSecret});
-        }
+ //       if (token !== undefined) {
+            oauth.setTokensAndSecrets(token);
+ //       }
         return oauth.sign({action:'GET',
             path:url,
             method:'HMAC-SHA1',
             parameters:params}).signed_url;
+    },
+
+    getRequestToken: function() {
+        var url = this.getSignedUrl("http://api.7digital.com/1.2/oauth/requestToken", {});
+        var xmlResponse = Tomahawk.syncRequest(url);
+        var domParser = new DOMParser();
+        xmlDoc = domParser.parseFromString(xmlResponse, "text/xml");
+        var token = this.xmlToJson(xmlDoc).response.oauth_request_token;
+        return {'access_token':token.oauth_token["#text"],'access_secret':token.oauth_token_secret["#text"]};
+    },
+
+    getAccessToken: function(request_token) {
+        var url = this.getSignedUrl("http://api.7digital.com/1.2/oauth/accessToken", {}, request_token);
+        var xmlResponse = Tomahawk.syncRequest(url);
+        var domParser = new DOMParser();
+        xmlDoc = domParser.parseFromString(xmlResponse, "text/xml");
+        var token = this.xmlToJson(xmlDoc).response.oauth_access_token;
+        return {'access_token':token.oauth_token["#text"],'access_secret':token.oauth_token_secret["#text"]};
+    },
+
+    getUserEmailAddress: function() {
+        if (!this.signedIn) {
+            return null;
+        }
+        var url = this.getSignedUrl("http://api.7digital.com/1.2/user/details", {}, this.accessToken);
+        var xmlResponse = Tomahawk.syncRequest(url);
+        var domParser = new DOMParser();
+        xmlDoc = domParser.parseFromString(xmlResponse, "text/xml");
+        var user = this.xmlToJson(xmlDoc).response.user;
+        return user.emailAddress["#text"];
     },
 
     getTrackStreamCatalogueUrl: function (trackId) {
@@ -593,7 +680,7 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
             userId:'123456',
             formatId: '55'
         };
-        return this.getSignedUrl("http://stream.geo.7digital.com/stream/catalogue", params, false)
+        return this.getSignedUrl("http://stream.geo.7digital.com/stream/catalogue", params)
     },
 
     getTrackStreamLockerUrl: function (trackId) {
@@ -601,18 +688,19 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
             trackId:trackId,
             formatId: '26'
         };
-        return this.getSignedUrl("http://stream.geo.7digital.com/stream/locker", params, true)
+        return this.getSignedUrl("http://stream.geo.7digital.com/stream/locker", params, this.accessToken)
     },
-
 
     getLockerUrl: function() {
         var params = {
             pageSize:500
         };
-        return this.getSignedUrl("http://api.7digital.com/1.2/user/locker", params, true)
+        return this.getSignedUrl("http://api.7digital.com/1.2/user/locker", params, this.accessToken)
     },
 
     loadLocker: function(xmlText) {
+        this.locker.lastUpdated = new Date();
+        this.locker.items = [];
         var domParser = new DOMParser();
         xmlDoc = domParser.parseFromString(xmlText, "text/xml");
         lockerReleases = this.xmlToJson(xmlDoc).response.locker.lockerReleases;
@@ -630,7 +718,6 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
                 }
             }
         }
-        this.locker.lastUpdated = new Date();
     },
 
 
@@ -713,8 +800,11 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
             results: [],
             qid: qid
         };
-        var apiQuery = this.getLockerUrl();
+        if (!this.signedIn) {
+            return;
+        }
         if (that.locker.lastUpdated == undefined) {
+            var apiQuery = this.getLockerUrl();
             Tomahawk.asyncRequest(apiQuery, function (xhr) {
                 that.loadLocker(xhr.responseText);
                 result.results = that.resolveLockerItems(artist, album, title, that.locker.items);
@@ -732,8 +822,11 @@ var SevendigitalResolver = Tomahawk.extend(TomahawkResolver, {
             results: [],
             qid: qid
         };
-        var apiQuery = this.getLockerUrl();
+        if (!this.signedIn) {
+            return;
+        }
         if (that.locker.lastUpdated == undefined) {
+            var apiQuery = this.getLockerUrl();
             Tomahawk.asyncRequest(apiQuery, function (xhr) {
                 that.loadLocker(xhr.responseText);
                 result.results = that.searchLockerItems(searchString, that.locker.items);
